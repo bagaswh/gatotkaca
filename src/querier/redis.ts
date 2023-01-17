@@ -1,4 +1,9 @@
-import { RedisClientType } from 'redis';
+import {
+  RedisClientType,
+  RedisFunctions,
+  RedisModules,
+  RedisScripts,
+} from 'redis';
 import QuerierClient, { QueryResult } from './client';
 
 /**
@@ -6,14 +11,19 @@ import QuerierClient, { QueryResult } from './client';
  * an integer value of a key, in case the job count is stored in a single key.
  */
 
-export class RedisClient {
-  constructor(protected readonly client: RedisClientType) {}
-}
+export class RedisListCounterQuerierClient implements QuerierClient {
+  public constructor(
+    private readonly client: RedisClientType<
+      RedisModules,
+      RedisFunctions,
+      RedisScripts
+    >
+  ) {}
 
-export class RedisListCounterQuerier
-  extends RedisClient
-  implements QuerierClient
-{
+  init() {
+    return this.client.connect();
+  }
+
   async query(key: string): Promise<QueryResult> {
     const value = await this.client.LLEN(key);
     return {
@@ -23,7 +33,19 @@ export class RedisListCounterQuerier
   }
 }
 
-export class RedisValueQuerier extends RedisClient implements QuerierClient {
+export class RedisValueQuerierClient implements QuerierClient {
+  public constructor(
+    private readonly client: RedisClientType<
+      RedisModules,
+      RedisFunctions,
+      RedisScripts
+    >
+  ) {}
+
+  init() {
+    return this.client.connect();
+  }
+
   async query(key: string): Promise<QueryResult> {
     return { key, value: (await this.client.GET(key)) || -1 };
   }

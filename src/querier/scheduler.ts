@@ -23,15 +23,13 @@ export class Scheduler extends EventEmitter {
     return Scheduler.instance;
   }
 
-  register(name: string, interval: number) {
+  register(id: string, name: string, interval: number) {
     // disallow less than a minute interval
     if (interval < 60000) {
       throw new ValueError(
         'scheduler interval cannot be less than a minute (60000ms)'
       );
     }
-
-    const id = nanoid(10);
 
     this.intervalIds.push({
       id,
@@ -40,7 +38,5 @@ export class Scheduler extends EventEmitter {
         this.emit('interval', { id, name });
       }, interval),
     });
-
-    return id;
   }
 }

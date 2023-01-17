@@ -1,16 +1,24 @@
+import { readFileSync } from 'fs';
+import { RedisClientOptions } from 'redis';
 import { EPAError } from './error';
 
 /**
- * Querier
+ * Querier & Querier Client
  */
-export type QuerierSource = 'redis' | 'mysql';
+// TODO: Support another client such as Kafka or MySQL
+export type QuerierClientType = 'redis';
 export type QuerierQueryType = 'ListCount' | 'Value';
+
+export type QuerierClientConfig = {
+  type: QuerierClientType;
+  queryType: QuerierQueryType;
+  key: string;
+  redis?: RedisClientOptions;
+};
 
 export type QuerierConfig = {
   name: string;
-  source: QuerierSource;
-  queryKey: string;
-  queryType: QuerierQueryType;
+  client: QuerierClientConfig;
   interval: number;
   timeout: number;
 };
@@ -19,7 +27,7 @@ export type QuerierConfig = {
  * Metrics storage
  */
 export type MetricsStorageConfig = {
-  storage: 'prometheus' | 'azure_monitor';
+  storage: 'prometheus' | 'AzureMonitor';
 };
 
 /**
@@ -74,7 +82,7 @@ export type AutoscaleConfig = {
 
 export type Config = {
   autoscaleConfigs?: AutoscaleConfig[];
-  queriers?: QuerierConfig[];
+  queriers: QuerierConfig[];
   metrics: MetricsStorageConfig;
 };
 
@@ -88,12 +96,14 @@ function validateConfig(json: object) {}
 
 export function readConfigFile(cfgPath: string): Config | undefined {
   try {
-    const json = JSON.parse(cfgPath);
+    const file = readFileSync(cfgPath, 'utf-8');
+    const json = JSON.parse(file);
     validateConfig(json);
     return json;
   } catch (err: any) {
     if (err instanceof SyntaxError) {
       throw new ConfigError('Failed to parse JSON config', err);
     }
+    throw new ConfigError(`Cannot read config file: ${err.message}`, err);
   }
 }

@@ -1,7 +1,18 @@
 import { program } from 'commander';
+import { Config, readConfigFile } from './config';
+import Querier from './querier/querier';
 
-program.option('--config.file', 'Config file path');
+program
+  .requiredOption('--config.file <configFile>', 'Config file path')
+  .option('--print.config', 'Print config to stderr');
 
 program.parse();
 
-console.log(program.options);
+const opts = program.opts();
+const config = readConfigFile(opts['config.file']) as Config;
+
+if (opts['print.config']) {
+  console.error(JSON.stringify(config, undefined, 2));
+}
+
+const querier = new Querier(config);

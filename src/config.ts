@@ -1,13 +1,30 @@
-import EPAError from './error';
+import { EPAError } from './error';
 
-export type QuerierBuiltinSource = 'redis' | 'mysql';
-export type QuerierBuiltinQueryType = 'ListCount' | 'Value';
+/**
+ * Querier
+ */
+export type QuerierSource = 'redis' | 'mysql';
+export type QuerierQueryType = 'ListCount' | 'Value';
 
-export type QuerierBuiltinConfig = {
-  source: QuerierBuiltinSource;
-  queryType: QuerierBuiltinQueryType;
+export type QuerierConfig = {
+  name: string;
+  source: QuerierSource;
+  queryKey: string;
+  queryType: QuerierQueryType;
+  interval: number;
+  timeout: number;
 };
 
+/**
+ * Metrics storage
+ */
+export type MetricsStorageConfig = {
+  storage: 'prometheus' | 'azure_monitor';
+};
+
+/**
+ * Autoscaler
+ */
 export type AutoscaleMetricConfig = {
   metricName: 'pending_events';
   operator: '<' | '<=' | '=' | '>=' | '>';
@@ -16,31 +33,39 @@ export type AutoscaleMetricConfig = {
   aggregation: 'avg' | 'min' | 'max' | 'sum' | 'last' | 'count';
 };
 export type AutoscaleActionConfig = {
-  operation:
-    | 'increase_count_by'
+  operation: // increase
+  | 'increase_count_by'
     | 'increase_percent_by'
     | 'increase_count_to'
+    // decrease
     | 'decrease_count_by'
     | 'decrease_percent_by'
     | 'decrease_count_to';
+  value: number;
+  cooldownInMinutes: number;
 };
 export type AutoscaleRuleConfig = {
   type: 'ScaleIn' | 'ScaleOut';
-  scope: string;
+  resource: 'CurrentScope' | string;
   metric: AutoscaleMetricConfig;
   action: AutoscaleActionConfig;
 };
-export type AutoscaleConditionScaleMode = 'Metric' | 'FixedInstance';
+export type AutoscaleConditionScaleMode =
+  | 'Metric'
+  | 'Webhook'
+  | 'FixedInstance';
 export type AutoscaleConditionConfig = {
   id?: string;
   name: string;
   scaleMode: AutoscaleConditionScaleMode;
-  rules: AutoscaleRuleConfig[];
-  instanceLimits: {
+  scope: string;
+  rules?: AutoscaleRuleConfig[];
+  instanceLimits?: {
     min: number;
     max: number;
     default: number;
   };
+  instanceCount?: number;
 };
 
 export type AutoscaleConfig = {
@@ -48,7 +73,9 @@ export type AutoscaleConfig = {
 };
 
 export type Config = {
-  autoscaleConfigs: AutoscaleConfig[];
+  autoscaleConfigs?: AutoscaleConfig[];
+  queriers?: QuerierConfig[];
+  metrics: MetricsStorageConfig;
 };
 
 class ConfigError extends EPAError {
@@ -59,9 +86,7 @@ class ConfigError extends EPAError {
 
 function validateConfig(json: object) {}
 
-export function readConfigFile(
-  cfgPath: string
-): QuerierBuiltinConfig | undefined {
+export function readConfigFile(cfgPath: string): Config | undefined {
   try {
     const json = JSON.parse(cfgPath);
     validateConfig(json);

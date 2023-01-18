@@ -1,3 +1,4 @@
+import { GatotError } from './../error';
 import { createClient } from '@redis/client';
 import { QuerierClientConfig } from './../config';
 import {
@@ -9,7 +10,11 @@ export type QueryResult = {
   value: string | number;
 };
 
-export default abstract class QuerierClient {
+export class ClientError extends GatotError {}
+export class ClientInitError extends ClientError {}
+export class ClientQueryError extends ClientError {}
+
+export abstract class QuerierClient {
   abstract query(key: string): Promise<QueryResult>;
   abstract init(): Promise<void>;
 }

@@ -1,0 +1,15 @@
+queriers:
+  - name: wabis-jobs
+    interval: 60
+    timeout: 9
+    client:
+      type: redis
+      queryType: ListCount
+      key: 'wabis_jobs:default'
+      redis:
+        url: redis://localhost:6379
+
+    
+
+metrics:
+  storage: prometheus

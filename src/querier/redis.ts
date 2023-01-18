@@ -4,16 +4,17 @@ import {
   RedisModules,
   RedisScripts,
 } from 'redis';
-import QuerierClient, { QueryResult } from './client';
+import logger from '../logger';
+import { QuerierClient, ClientInitError, QueryResult } from './client';
 
 /**
  * Redis querier can be configured to query the number of items in a list of
  * an integer value of a key, in case the job count is stored in a single key.
  */
 
-export class RedisListCounterQuerierClient implements QuerierClient {
-  public constructor(
-    private readonly client: RedisClientType<
+class RedisClient {
+  constructor(
+    protected readonly client: RedisClientType<
       RedisModules,
       RedisFunctions,
       RedisScripts
@@ -21,9 +22,32 @@ export class RedisListCounterQuerierClient implements QuerierClient {
   ) {}
 
   init() {
-    return this.client.connect();
+    logger.info(`Connecting to Redis at url ${this.client.options?.url} `);
+    return new Promise<void>((resolve, reject) => {
+      function onError(err: any) {
+        reject(
+          new ClientInitError(
+            `Failed connecting to Redis host: ${err.message}`,
+            err
+          )
+        );
+      }
+      this.client.on('error', onError);
+      this.client
+        .connect()
+        .then(() => {
+          logger.info('Connected to Redis host');
+          resolve();
+        })
+        .catch(onError);
+    });
   }
+}
 
+export class RedisListCounterQuerierClient
+  extends RedisClient
+  implements QuerierClient
+{
   async query(key: string): Promise<QueryResult> {
     const value = await this.client.LLEN(key);
     return {
@@ -33,28 +57,11 @@ export class RedisListCounterQuerierClient implements QuerierClient {
   }
 }
 
-export class RedisValueQuerierClient implements QuerierClient {
-  public constructor(
-    private readonly client: RedisClientType<
-      RedisModules,
-      RedisFunctions,
-      RedisScripts
-    >
-  ) {}
-
-  init() {
-    return this.client.connect();
-  }
-
+export class RedisValueQuerierClient
+  extends RedisClient
+  implements QuerierClient
+{
   async query(key: string): Promise<QueryResult> {
     return { key, value: (await this.client.GET(key)) || -1 };
   }
-}
-
-export function getNumberOfItemsInKey(client: RedisClientType, key: string) {
-  return client.LLEN(key);
-}
-
-export function getValueOfKey(client: RedisClientType, key: string) {
-  return client.GET(key);
 }

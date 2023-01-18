@@ -1,4 +1,4 @@
-export class EPAError extends Error {
+export class GatotError extends Error {
   constructor(message: string, private readonly originalError?: Error) {
     super(message);
   }

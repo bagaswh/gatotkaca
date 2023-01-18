@@ -3,7 +3,7 @@ import winston from 'winston';
 const logger = winston.createLogger({
   level: 'info',
   format: winston.format.json(),
-  defaultMeta: { service: 'event-processor-autoscaler' },
+  defaultMeta: { service: 'gatot' },
   transports: [
     new winston.transports.Console({
       format: winston.format.simple(),

@@ -1,10 +1,12 @@
-import { EPAError } from './../error';
+import { GatotError } from './../error';
 import logger from '../logger';
-import MetricsStore from '../metrics/metrics-store';
+import { MetricsStore } from '../metrics/metrics';
 import { Config, QuerierConfig, QuerierClientConfig } from './../config';
-import QuerierClient, { QuerierClientFactory } from './client';
+import { QuerierClient, ClientError, QuerierClientFactory } from './client';
 import { Scheduler } from './scheduler';
 import { nanoid } from 'nanoid';
+
+export class QuerierError extends GatotError {}
 
 export default class Querier {
   private readonly scheduler: Scheduler;
@@ -17,8 +19,6 @@ export default class Querier {
   };
 
   constructor(private readonly config: Config) {
-    this.setup();
-
     this.scheduler = Scheduler.getInstance();
     this.metricsStore = MetricsStore.getInstance(config.metrics);
     this.idMaps = {};
@@ -36,15 +36,22 @@ export default class Querier {
         logger.info(`Setting up querier for querier ${querierConfig.name}`);
         const id = nanoid(21);
         const client = this.createClient(querierConfig.client);
+        logger.info(`Initializing client for querier ${querierConfig.name}`);
         await client.init();
+        logger.info(`Initialized client for querier ${querierConfig.name}`);
         this.idMaps[id] = {
           config: querierConfig,
-          client: this.createClient(querierConfig.client),
+          client,
         };
-
         this.scheduler.register(id, querierConfig.name, querierConfig.interval);
       } catch (err: any) {
-        throw new EPAError(`Failed setting up querier: ${err.message}`, err);
+        if (err instanceof ClientError) {
+          throw new QuerierError(
+            `Failed connecting to querier client: ${err.message}`,
+            err
+          );
+        }
+        throw new GatotError(`Failed setting up querier: ${err.message}`, err);
       }
     }
     this.scheduler.on('interval', ({ id }) => this.query(id));
@@ -57,7 +64,7 @@ export default class Querier {
     const querier = this.idMaps[id];
     try {
       const result = await querier.client.query(querier.config.client.key);
-      this.metricsStore.insert(result);
+      // this.metricsStore.insert(result);
     } catch (err: any) {
       logger.error('Query failed with error:' + err.message);
     }

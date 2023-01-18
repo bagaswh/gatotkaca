@@ -1,108 +1,97 @@
 import { readFileSync } from 'fs';
-import { RedisClientOptions } from 'redis';
-import { EPAError } from './error';
+import { GatotError } from './error';
+import yaml, { YAMLException } from 'js-yaml';
+import * as Z from 'zod';
 
-/**
- * Querier & Querier Client
- */
-// TODO: Support another client such as Kafka or MySQL
-export type QuerierClientType = 'redis';
-export type QuerierQueryType = 'ListCount' | 'Value';
+const QuerierClientConfigSchema = Z.object({
+  // TODO: Support another client such as Kafka or MySQL
+  type: Z.enum(['redis']),
+  queryType: Z.enum(['ListCount', 'Value']),
+  key: Z.string(),
+  redis: Z.any(),
+}).refine(
+  (input) => {
+    if (input.type == 'redis' && typeof input.redis != 'object') {
+      return false;
+    }
+    return true;
+  },
+  {
+    message:
+      'Redis client config should be provided when using Redis client type',
+  }
+);
+export type QuerierClientConfig = Z.infer<typeof QuerierClientConfigSchema>;
 
-export type QuerierClientConfig = {
-  type: QuerierClientType;
-  queryType: QuerierQueryType;
-  key: string;
-  redis?: RedisClientOptions;
-};
+const QuerierConfigSchema = Z.object({
+  name: Z.string(),
+  client: QuerierClientConfigSchema,
+  interval: Z.number().min(60),
+  timeout: Z.number().min(1),
+}).refine(
+  (input) => {
+    return input.interval > input.timeout;
+  },
+  { message: 'Query interval should be higher than timeout' }
+);
+export type QuerierConfig = Z.infer<typeof QuerierConfigSchema>;
 
-export type QuerierConfig = {
-  name: string;
-  client: QuerierClientConfig;
-  interval: number;
-  timeout: number;
-};
+const PrometheusStorageConfigSchema = Z.object({
+  metricPrefix: Z.string().optional().default('gatot_scaler_'),
+  collectDefaultMetrics: Z.boolean().optional().default(false),
+});
+export type PrometheusStorageConfig = Z.infer<
+  typeof PrometheusStorageConfigSchema
+>;
 
-/**
- * Metrics storage
- */
-export type MetricsStorageConfig = {
-  storage: 'prometheus' | 'AzureMonitor';
-};
+const MetricsStorageConfigSchema = Z.object({
+  storage: Z.enum(['prometheus', 'AzureMonitor']),
+  prometheus: PrometheusStorageConfigSchema,
+}).refine(
+  (input) => {
+    if (input.storage == 'prometheus' && typeof input.prometheus != 'object') {
+      return false;
+    }
+    return true;
+  },
+  {
+    message:
+      'Prometheus storage config should be provided when using Prometheus storage type',
+  }
+);
+export type MetricsStorageConfig = Z.infer<typeof MetricsStorageConfigSchema>;
 
-/**
- * Autoscaler
- */
-export type AutoscaleMetricConfig = {
-  metricName: 'pending_events';
-  operator: '<' | '<=' | '=' | '>=' | '>';
-  metricThreshold: number;
-  durationInMinutes: number;
-  aggregation: 'avg' | 'min' | 'max' | 'sum' | 'last' | 'count';
-};
-export type AutoscaleActionConfig = {
-  operation: // increase
-  | 'increase_count_by'
-    | 'increase_percent_by'
-    | 'increase_count_to'
-    // decrease
-    | 'decrease_count_by'
-    | 'decrease_percent_by'
-    | 'decrease_count_to';
-  value: number;
-  cooldownInMinutes: number;
-};
-export type AutoscaleRuleConfig = {
-  type: 'ScaleIn' | 'ScaleOut';
-  resource: 'CurrentScope' | string;
-  metric: AutoscaleMetricConfig;
-  action: AutoscaleActionConfig;
-};
-export type AutoscaleConditionScaleMode =
-  | 'Metric'
-  | 'Webhook'
-  | 'FixedInstance';
-export type AutoscaleConditionConfig = {
-  id?: string;
-  name: string;
-  scaleMode: AutoscaleConditionScaleMode;
-  scope: string;
-  rules?: AutoscaleRuleConfig[];
-  instanceLimits?: {
-    min: number;
-    max: number;
-    default: number;
-  };
-  instanceCount?: number;
-};
+const ConfigSchema = Z.object({
+  queriers: Z.array(QuerierConfigSchema).min(1),
+  metrics: MetricsStorageConfigSchema,
+});
+export type Config = Z.infer<typeof ConfigSchema>;
 
-export type AutoscaleConfig = {
-  autoscaleConditions: AutoscaleConditionConfig[];
-};
-
-export type Config = {
-  autoscaleConfigs?: AutoscaleConfig[];
-  queriers: QuerierConfig[];
-  metrics: MetricsStorageConfig;
-};
-
-class ConfigError extends EPAError {
+class ConfigError extends GatotError {
   constructor(message: string, originalError: Error) {
     super(message, originalError);
   }
 }
 
-function validateConfig(json: object) {}
-
 export function readConfigFile(cfgPath: string): Config | undefined {
   try {
     const file = readFileSync(cfgPath, 'utf-8');
-    const json = JSON.parse(file);
-    validateConfig(json);
-    return json;
+    const cfg = yaml.load(file) as object;
+    const parsedCfg = ConfigSchema.parse(cfg);
+    for (const querier of parsedCfg.queriers) {
+      querier.interval *= 1000;
+      querier.timeout *= 1000;
+    }
+    return parsedCfg;
   } catch (err: any) {
-    if (err instanceof SyntaxError) {
-      throw new ConfigError('Failed to parse JSON config', err);
+    if (err instanceof YAMLException) {
+      throw new ConfigError('Failed to parse YAML config', err);
+    }
+    if (err instanceof Z.ZodError) {
+      throw new ConfigError(
+        `Config file is not a valid according to schema: ${err.message}`,
+        err
+      );
     }
     throw new ConfigError(`Cannot read config file: ${err.message}`, err);
   }

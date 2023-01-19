@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { GatotError } from './error';
 import yaml, { YAMLException } from 'js-yaml';
 import * as Z from 'zod';
+import { isObject } from './utils/object';
 
 const QuerierClientConfigSchema = Z.object({
   // TODO: Support another client such as Kafka or MySQL
@@ -46,19 +47,10 @@ export type PrometheusStorageConfig = Z.infer<
 
 const MetricsStorageConfigSchema = Z.object({
   storage: Z.enum(['prometheus', 'AzureMonitor']),
-  prometheus: PrometheusStorageConfigSchema,
-}).refine(
-  (input) => {
-    if (input.storage == 'prometheus' && typeof input.prometheus != 'object') {
-      return false;
-    }
-    return true;
-  },
-  {
-    message:
-      'Prometheus storage config should be provided when using Prometheus storage type',
-  }
-);
+  prometheus: PrometheusStorageConfigSchema.optional().default({
+    metricPrefix: 'gatot_scaler_',
+  }),
+});
 export type MetricsStorageConfig = Z.infer<typeof MetricsStorageConfigSchema>;
 
 const ConfigSchema = Z.object({
@@ -73,6 +65,40 @@ class ConfigError extends GatotError {
   }
 }
 
+function parseCfgStringValue(val: string | number | boolean) {
+  let match: RegExpMatchArray | null = null;
+  if (
+    typeof val == 'string' &&
+    (match = (val as string).match(/\$\{ENV:(.+?)\}/))
+  ) {
+    return process.env[match[1]];
+  }
+  return val;
+}
+
+function walk(
+  obj: any,
+  root?: any,
+  key?: any,
+  cb?: (root: any, key: any, val: any) => void
+): void {
+  if (Array.isArray(obj)) {
+    obj.forEach(function (element, index) {
+      walk(element, obj, index, cb);
+    });
+  } else if (isObject(obj)) {
+    for (var property in obj) {
+      if (obj.hasOwnProperty(property)) {
+        walk(obj[property], obj, property, cb);
+      }
+    }
+  } else {
+    if (typeof cb == 'function') {
+      cb(root, key, obj);
+    }
+  }
+}
+
 export function readConfigFile(cfgPath: string): Config | undefined {
   try {
     const file = readFileSync(cfgPath, 'utf-8');
@@ -82,6 +108,9 @@ export function readConfigFile(cfgPath: string): Config | undefined {
       querier.interval *= 1000;
       querier.timeout *= 1000;
     }
+    walk(parsedCfg, undefined, undefined, (obj: any, key: any, val: any) => {
+      obj[key] = parseCfgStringValue(val);
+    });
     return parsedCfg;
   } catch (err: any) {
     if (err instanceof YAMLException) {

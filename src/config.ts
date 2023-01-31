@@ -4,11 +4,25 @@ import yaml, { YAMLException } from 'js-yaml';
 import * as Z from 'zod';
 import { isObject } from './utils/object';
 
+const WebConfigSchema = Z.object({
+  port: Z.number().optional().default(8451),
+  metricsPath: Z.string().optional().default('/metrics'),
+  hostname: Z.string().optional().default('0.0.0.0'),
+}).default({});
+export type WebConfig = Z.infer<typeof WebConfigSchema>;
+
+const MetricSpecSchema = Z.object({
+  pending_events: Z.record(Z.null()),
+});
+
+const MetricNameSchema = MetricSpecSchema.keyof();
+export type MetricName = Z.infer<typeof MetricNameSchema>;
+
 const QuerierClientConfigSchema = Z.object({
   // TODO: Support another client such as Kafka or MySQL
   type: Z.enum(['redis']),
   queryType: Z.enum(['ListCount', 'Value']),
-  key: Z.string(),
+  metricSpec: MetricSpecSchema,
   redis: Z.any(),
 }).refine(
   (input) => {
@@ -27,14 +41,21 @@ export type QuerierClientConfig = Z.infer<typeof QuerierClientConfigSchema>;
 const QuerierConfigSchema = Z.object({
   name: Z.string(),
   client: QuerierClientConfigSchema,
-  interval: Z.number().min(60),
-  timeout: Z.number().min(1),
-}).refine(
-  (input) => {
-    return input.interval > input.timeout;
-  },
-  { message: 'Query interval should be higher than timeout' }
-);
+  interval: Z.number().min(5),
+  timeout: Z.number().min(5),
+})
+  .refine(
+    (input) => {
+      return input.interval >= input.timeout;
+    },
+    { message: 'Query interval should be higher than timeout' }
+  )
+  .transform((arg) => {
+    if (arg.timeout == arg.interval) {
+      arg.timeout -= 0.5;
+    }
+    return arg;
+  });
 export type QuerierConfig = Z.infer<typeof QuerierConfigSchema>;
 
 const PrometheusStorageConfigSchema = Z.object({
@@ -56,14 +77,14 @@ export type MetricsStorageConfig = Z.infer<typeof MetricsStorageConfigSchema>;
 const ConfigSchema = Z.object({
   queriers: Z.array(QuerierConfigSchema).min(1),
   metrics: MetricsStorageConfigSchema,
+  web: WebConfigSchema,
 });
 export type Config = Z.infer<typeof ConfigSchema>;
 
-class ConfigError extends GatotError {
-  constructor(message: string, originalError: Error) {
-    super(message, originalError);
-  }
-}
+export class ConfigError extends GatotError {}
+export class ConfigValidationError extends ConfigError {}
+export class ConfigIOError extends ConfigError {}
+export class ConfigParseError extends ConfigError {}
 
 function parseCfgStringValue(val: string | number | boolean) {
   let match: RegExpMatchArray | null = null;
@@ -114,14 +135,14 @@ export function readConfigFile(cfgPath: string): Config | undefined {
     return parsedCfg;
   } catch (err: any) {
     if (err instanceof YAMLException) {
-      throw new ConfigError('Failed to parse YAML config', err);
+      throw new ConfigParseError('Failed to parse YAML config', err);
     }
     if (err instanceof Z.ZodError) {
-      throw new ConfigError(
-        `Config file is not a valid according to schema: ${err.message}`,
+      throw new ConfigValidationError(
+        `Config file is not valid according to schema: ${err.message}`,
         err
       );
     }
-    throw new ConfigError(`Cannot read config file: ${err.message}`, err);
+    throw new ConfigIOError(`Cannot read config file: ${err.message}`, err);
   }
 }

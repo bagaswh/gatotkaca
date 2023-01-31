@@ -1,14 +1,18 @@
 queriers:
-  - name: wabis-jobs
-    interval: 60
-    timeout: 9
+  - name: webhook-redis-jobs
+    interval: 5
+    timeout: 5
     client:
       type: redis
       queryType: ListCount
-      key: 'wabis_jobs:default'
+      metricSpec:
+        pending_events:
+          webhook_queue_database_queues:default:
+          webhook_queue_database_queues:high:
+          webhook_queue_database_queues:low:
       redis:
         url: ${ENV:REDIS_URL}
+        password: ${ENV:REDIS_PASSWORD}
 
 metrics:
   storage: prometheus
-    

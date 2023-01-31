@@ -4,13 +4,17 @@ import {
   RedisModules,
   RedisScripts,
 } from 'redis';
-import logger from '../logger';
-import { QuerierClient, ClientInitError, QueryResult } from './client';
+import logger from '../../logger';
+import { QuerierClient, QueryResult } from './client';
+import { ClientInitError, ClientQueryError } from './error';
 
 /**
- * Redis querier can be configured to query the number of items in a list of
+ * Redis querier can be configured to query the number of items in a list or
  * an integer value of a key, in case the job count is stored in a single key.
  */
+
+export class RedisClientInitError extends ClientInitError {}
+export class RedisClientQueryError extends ClientQueryError {}
 
 class RedisClient {
   constructor(
@@ -23,16 +27,17 @@ class RedisClient {
 
   init() {
     logger.info(`Connecting to Redis at url ${this.client.options?.url} `);
+    this.client.on('error', () => console.error('si badut'));
     return new Promise<void>((resolve, reject) => {
       function onError(err: any) {
         reject(
-          new ClientInitError(
+          new RedisClientInitError(
             `Failed connecting to Redis host: ${err.message}`,
             err
           )
         );
       }
-      this.client.on('error', onError);
+      this.client.once('error', onError);
       this.client
         .connect()
         .then(() => {
@@ -49,11 +54,14 @@ export class RedisListCounterQuerierClient
   implements QuerierClient
 {
   async query(key: string): Promise<QueryResult> {
-    const value = await this.client.LLEN(key);
-    return {
-      key,
-      value,
-    };
+    try {
+      return {
+        key,
+        value: await this.client.LLEN(key),
+      };
+    } catch (err: any) {
+      throw new RedisClientQueryError(`Failed querying: ${err.message}`);
+    }
   }
 }
 
@@ -62,6 +70,13 @@ export class RedisValueQuerierClient
   implements QuerierClient
 {
   async query(key: string): Promise<QueryResult> {
-    return { key, value: (await this.client.GET(key)) || -1 };
+    try {
+      return {
+        key,
+        value: (await this.client.GET(key)) || -1,
+      };
+    } catch (err: any) {
+      throw new RedisClientQueryError(`Failed querying: ${err.message}`);
+    }
   }
 }

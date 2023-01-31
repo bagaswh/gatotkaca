@@ -18,11 +18,13 @@ export class PrometheusStorage implements MetricsStorage {
       [key: string]: {
         type: 'gauge';
         help: string;
+        labels: string[];
       };
     } = {
       pending_events: {
         type: 'gauge',
         help: 'The number of pending events',
+        labels: ['name', 'key'],
       },
     };
     Object.keys(metrics).forEach((key) => {
@@ -31,7 +33,11 @@ export class PrometheusStorage implements MetricsStorage {
       switch (metricDef.type) {
         case 'gauge': {
           this.registry.registerMetric(
-            new Gauge({ name: `${metricPrefix}${key}`, help: metricDef.help })
+            new Gauge({
+              name: `${metricPrefix}${key}`,
+              help: metricDef.help,
+              labelNames: metricDef.labels,
+            })
           );
         }
       }
@@ -39,9 +45,16 @@ export class PrometheusStorage implements MetricsStorage {
   }
 
   async insert(metric: Metric) {
-    const metricInstance = this.registry.getSingleMetric(metric.name);
+    const metricPrefix = this.cfg.metricPrefix;
+    const metricInstance = this.registry.getSingleMetric(
+      `${metricPrefix}${metric.name}`
+    );
     if (metricInstance) {
-      // metricInstance.
+      (metricInstance as Gauge).set(metric.labels, metric.value);
     }
+  }
+
+  render() {
+    return this.registry.metrics();
   }
 }

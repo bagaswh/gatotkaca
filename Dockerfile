@@ -19,3 +19,4 @@ COPY . .
 
 RUN chmod +x bin/www
 ENTRYPOINT [ "bin/www" ]
+CMD ["--config.file", "examples/etc/app/config.yml"]

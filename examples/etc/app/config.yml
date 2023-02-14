@@ -1,0 +1,23 @@
+queriers:
+  - name: waba-redis-jobs
+    interval: 5
+    timeout: 5
+    client:
+      type: redis
+      queryType: ListCount
+      metricSpec:
+        pending_events:
+          whatsapp_business_platform_database_queues:default:
+          whatsapp_business_platform_database_queues:high:
+          whatsapp_business_platform_database_queues:low:
+      redis:
+        url: ${ENV:REDIS_URL}
+        password: ${ENV:REDIS_PASSWORD}
+
+metrics:
+  storage: prometheus
+
+web:
+  port: 8451
+
+log_level: info

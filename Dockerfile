@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18
 
 # Create app directory
 WORKDIR /usr/src/app
@@ -16,3 +16,6 @@ COPY src ./
 RUN npm run build
 
 COPY . .
+
+RUN chmod +x bin/www
+ENTRYPOINT [ "bin/www" ]

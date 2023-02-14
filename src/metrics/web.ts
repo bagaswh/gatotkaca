@@ -1,21 +1,37 @@
-import express from 'express';
+import express, { Express } from 'express';
 import http from 'http';
-import { Config, WebConfig } from '../config';
+import { Config } from '../config';
 import { createLogger } from '../logger';
 import { MetricsStorage } from './metrics';
 
-export function initWeb(cfg: Config, metricsStorage: MetricsStorage) {
-  const app = express();
+export class WebServer {
+  private readonly app: Express;
 
-  app.get(cfg.web.metricsPath, async (req, res) => {
-    res
-      .setHeader('content-type', 'text/plain')
-      .send(await metricsStorage.render());
-  });
+  constructor(
+    private readonly metricsStorage: MetricsStorage,
+    private readonly cfg: Config
+  ) {
+    this.app = express();
+    this.setup();
+  }
 
-  http.createServer(app).listen(cfg.web.port, cfg.web.hostname, () => {
-    createLogger('web', cfg.logLevel).info(
-      `Started HTTP server on ${cfg.web.hostname}:${cfg.web.port}`
-    );
-  });
+  setup() {
+    this.app.get(this.cfg.web.metricsPath, async (req, res) => {
+      res
+        .setHeader('content-type', 'text/plain')
+        .send(await this.metricsStorage.render());
+    });
+
+    this.app.get('/-/ready', (req, res) => {});
+  }
+
+  start() {
+    http
+      .createServer(this.app)
+      .listen(this.cfg.web.port, this.cfg.web.hostname, () => {
+        createLogger('web', this.cfg.logLevel).info(
+          `Started HTTP server on ${this.cfg.web.hostname}:${this.cfg.web.port}`
+        );
+      });
+  }
 }

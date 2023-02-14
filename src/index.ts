@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { Config, readConfigFile, ConfigValidationError } from './config';
 import Querier from './querier/querier';
 import { MetricsStorageFactory } from './metrics/metrics';
-import { initWeb } from './metrics/web';
+import { WebServer } from './metrics/web';
 import { createLogger } from './logger';
 
 dotenv.config();
@@ -38,4 +38,5 @@ const metricsStorage = MetricsStorageFactory.create(config.metrics);
 const querier = new Querier(config, metricsStorage);
 querier.init();
 
-initWeb(config, metricsStorage);
+const webserver = new WebServer(metricsStorage, config);
+webserver.start();

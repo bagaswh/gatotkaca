@@ -1,6 +1,6 @@
 import yaml from 'js-yaml';
 import { program } from 'commander';
-import { Config, ConfigError, readConfigFile } from './config';
+import { Config, readConfigFile, ConfigValidationError } from './config';
 import Querier from './querier/querier';
 import { MetricsStorageFactory } from './metrics/metrics';
 import { initWeb } from './metrics/web';
@@ -17,7 +17,7 @@ let config;
 try {
   config = readConfigFile(opts['config.file']) as Config;
 } catch (err: any) {
-  if (err instanceof ConfigError) {
+  if (err instanceof ConfigValidationError) {
     logger.error(`Failed to validate config file: ${err.message}`);
     process.exit(1);
   } else {

@@ -1,4 +1,4 @@
-import { GatotError, ValueError } from './../error';
+import { GatotError } from './../error';
 import { createLogger } from '../logger';
 import { MetricsStorage } from '../metrics/metrics';
 import { Config, QuerierConfig, QuerierClientConfig } from './../config';
@@ -8,7 +8,6 @@ import { Logger } from 'winston';
 import { QuerierClient } from './client/client';
 import { QuerierClientFactory } from './client/factory';
 import { ClientError } from './client/error';
-import { isObject } from '../utils/object';
 
 export class QuerierError extends GatotError {}
 
@@ -82,8 +81,7 @@ export default class Querier {
     client: QuerierClient,
     queryName: string,
     metricName: string,
-    queryKey: string,
-    labels: object = {}
+    queryKey: string
   ) {
     const result = await client.query(queryKey);
     this.metricsStorage.insert({
@@ -127,7 +125,7 @@ export default class Querier {
       tasks = [];
       this.logger.debug(`Queried all metricSpec for ${querier.config.name}`);
     } catch (err: any) {
-      this.logger.error('Query failed with error:' + err.message);
+      this.logger.error(`Query failed with error: ${err.message}`);
     }
   }
 }

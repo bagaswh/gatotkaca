@@ -74,10 +74,12 @@ const MetricsStorageConfigSchema = Z.object({
 });
 export type MetricsStorageConfig = Z.infer<typeof MetricsStorageConfigSchema>;
 
+export type LogLevels = 'warn' | 'error' | 'info' | 'debug';
 const ConfigSchema = Z.object({
   queriers: Z.array(QuerierConfigSchema).min(1),
   metrics: MetricsStorageConfigSchema,
   web: WebConfigSchema,
+  logLevel: Z.enum(['debug', 'warning', 'error', 'info']),
 });
 export type Config = Z.infer<typeof ConfigSchema>;
 

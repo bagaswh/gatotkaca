@@ -1,21 +1,21 @@
 import express from 'express';
 import http from 'http';
-import { WebConfig } from '../config';
+import { Config, WebConfig } from '../config';
 import { createLogger } from '../logger';
 import { MetricsStorage } from './metrics';
 
-export function initWeb(cfg: WebConfig, metricsStorage: MetricsStorage) {
+export function initWeb(cfg: Config, metricsStorage: MetricsStorage) {
   const app = express();
 
-  app.get(cfg.metricsPath, async (req, res) => {
+  app.get(cfg.web.metricsPath, async (req, res) => {
     res
       .setHeader('content-type', 'text/plain')
       .send(await metricsStorage.render());
   });
 
-  http.createServer(app).listen(cfg.port, cfg.hostname, () => {
-    createLogger({ component: 'web' }).info(
-      `Started HTTP server on ${cfg.hostname}:${cfg.port}`
+  http.createServer(app).listen(cfg.web.port, cfg.web.hostname, () => {
+    createLogger('web', cfg.logLevel).info(
+      `Started HTTP server on ${cfg.web.hostname}:${cfg.web.port}`
     );
   });
 }

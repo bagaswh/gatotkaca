@@ -1,22 +1,22 @@
 import winston, { createLogger as winstonCreateLogger, Logger } from 'winston';
 
-const logger = winstonCreateLogger({
-  level: 'debug',
-  format: winston.format.json(),
-  defaultMeta: { service: 'gatot' },
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.simple(),
-    }),
-  ],
-});
-
 type ChildLoggerMetadata = {
-  component: string;
+  component?: string;
 };
 
-export function createLogger(config: ChildLoggerMetadata) {
-  return logger.child(config);
+export function createLogger(
+  context: string,
+  logLevel: string = 'info',
+  config: ChildLoggerMetadata = {}
+) {
+  return winstonCreateLogger({
+    level: logLevel,
+    format: winston.format.json(),
+    defaultMeta: { context, ...config },
+    transports: [
+      new winston.transports.Console({
+        format: winston.format.simple(),
+      }),
+    ],
+  });
 }
-
-export default logger;

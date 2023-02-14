@@ -14,9 +14,7 @@ export class Scheduler {
 
   private constructor() {
     this.intervalIds = {};
-    this.logger = createLogger({
-      component: 'Scheduler',
-    });
+    this.logger = createLogger('scheduler');
   }
 
   static getInstance() {

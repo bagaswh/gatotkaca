@@ -27,9 +27,7 @@ export default class Querier {
   ) {
     this.scheduler = Scheduler.getInstance();
     this.idMaps = {};
-    this.logger = createLogger({
-      component: 'Querier',
-    });
+    this.logger = createLogger('querier');
   }
 
   private createClient(cfg: QuerierClientConfig) {

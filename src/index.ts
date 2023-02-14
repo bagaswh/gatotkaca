@@ -1,16 +1,21 @@
 import yaml from 'js-yaml';
 import { program } from 'commander';
+import dotenv from 'dotenv';
 import { Config, readConfigFile, ConfigValidationError } from './config';
 import Querier from './querier/querier';
 import { MetricsStorageFactory } from './metrics/metrics';
 import { initWeb } from './metrics/web';
-import logger from './logger';
+import { createLogger } from './logger';
+
+dotenv.config();
 
 program
   .requiredOption('--config.file <configFile>', 'Config file path')
   .option('--print.config', 'Print config to stderr');
 
 program.parse();
+
+const logger = createLogger('main');
 
 const opts = program.opts();
 let config;
@@ -33,4 +38,4 @@ const metricsStorage = MetricsStorageFactory.create(config.metrics);
 const querier = new Querier(config, metricsStorage);
 querier.init();
 
-initWeb(config.web, metricsStorage);
+initWeb(config, metricsStorage);

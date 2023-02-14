@@ -32,11 +32,12 @@ class RedisClient extends EventEmitter {
 
   init() {
     logger.info(`Connecting to Redis at url ${this.client.options?.url} `);
+    const options = this.client.options;
     return new Promise<void>((resolve, reject) => {
       function onError(err: any) {
         reject(
           new RedisClientInitError(
-            `Failed connecting to Redis host: ${err.message}`,
+            `Failed connecting to Redis host ${options?.url}: ${err.message}`,
             err
           )
         );

@@ -1,5 +1,5 @@
 queriers:
-  - name: waba-redis-jobs
+  - name: WabaRedisJobs
     interval: 5
     timeout: 5
     client:
@@ -11,8 +11,23 @@ queriers:
           whatsapp_business_platform_database_queues:high:
           whatsapp_business_platform_database_queues:low:
       redis:
-        url: ${ENV:REDIS_URL}
-        password: ${ENV:REDIS_PASSWORD}
+        url: ${ENV:REDIS_WABA_URL}
+        password: ${ENV:REDIS_WABA_PASSWORD}
+  
+  - name: WebhookRedisJobs
+    interval: 5
+    timeout: 5
+    client:
+      type: redis
+      queryType: ListCount
+      metricSpec:
+        pending_events:
+          webhook_queue_database_queues:default:
+          webhook_queue_database_queues:high:
+          webhook_queue_database_queues:low:
+      redis:
+        url: ${ENV:REDIS_WEBHOOK_URL}
+        password: ${ENV:REDIS_WEBHOOK_PASSWORD}
 
 metrics:
   storage: prometheus

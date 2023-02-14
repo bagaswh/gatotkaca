@@ -6,9 +6,11 @@ services:
     restart: unless-stopped
     build: .
     volumes:
-      - ./dev/etc/app/config.yml:/etc/gatotkaca/config.yml
+      - ./examples/etc/app/config.yml:/etc/gatotkaca/config.yml
     init: true
     command: >
       --config.file /etc/gatotkaca/config.yml
     ports:
       - "8451:8451"
+    env_file:
+      - .env

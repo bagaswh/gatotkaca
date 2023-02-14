@@ -20,4 +20,4 @@ metrics:
 web:
   port: 8451
 
-log_level: info
+logLevel: info

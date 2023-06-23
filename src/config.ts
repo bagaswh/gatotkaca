@@ -6,9 +6,10 @@ import { isObject } from './utils/object';
 
 const WebConfigSchema = Z.object({
   port: Z.number().optional().default(8451),
+  renderMetricsFromStorage: Z.string(),
   metricsPath: Z.string().optional().default('/metrics'),
   hostname: Z.string().optional().default('0.0.0.0'),
-}).default({});
+});
 export type WebConfig = Z.infer<typeof WebConfigSchema>;
 
 const MetricSpecSchema = Z.object({
@@ -66,18 +67,40 @@ export type PrometheusStorageConfig = Z.infer<
   typeof PrometheusStorageConfigSchema
 >;
 
+const MetricsStorageTypeConfigSchema = Z.enum(['prometheus', 'AzureMonitor']);
+export type MetricsStorageTypeConfig = Z.infer<
+  typeof MetricsStorageTypeConfigSchema
+>;
+
 const MetricsStorageConfigSchema = Z.object({
-  storage: Z.enum(['prometheus', 'AzureMonitor']),
+  storage: MetricsStorageTypeConfigSchema,
+  name: Z.optional(Z.string()),
   prometheus: PrometheusStorageConfigSchema.optional().default({
     metricPrefix: 'gatot_scaler_',
   }),
+  azuremonitor: Z.optional(Z.any()),
+}).superRefine((input, ctx) => {
+  const createMessage = (storage: string, expectedKey: string) =>
+    `Provided storage is '${storage}' but the key '${expectedKey}' is not provided`;
+  if (input.storage == 'prometheus' && !input.prometheus) {
+    ctx.addIssue({
+      code: Z.ZodIssueCode.custom,
+      message: createMessage('prometheus', 'prometheus'),
+    });
+  }
+  if (input.storage == 'AzureMonitor' && !input.azuremonitor) {
+    ctx.addIssue({
+      code: Z.ZodIssueCode.custom,
+      message: createMessage('AzureMonitor', 'azuremonitor'),
+    });
+  }
 });
 export type MetricsStorageConfig = Z.infer<typeof MetricsStorageConfigSchema>;
 
 export type LogLevels = 'warn' | 'error' | 'info' | 'debug';
 const ConfigSchema = Z.object({
   queriers: Z.array(QuerierConfigSchema).min(1),
-  metrics: MetricsStorageConfigSchema,
+  metrics: Z.array(MetricsStorageConfigSchema),
   web: WebConfigSchema,
   logLevel: Z.enum(['debug', 'warning', 'error', 'info']),
 });

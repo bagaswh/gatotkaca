@@ -10,10 +10,11 @@ queriers:
           whatsapp_business_platform_database_queues:default:
           whatsapp_business_platform_database_queues:high:
           whatsapp_business_platform_database_queues:low:
+          whatsapp_business_platform_database_queues:broadcast:
       redis:
         url: ${ENV:REDIS_WABA_URL}
         password: ${ENV:REDIS_WABA_PASSWORD}
-  
+
   - name: WebhookRedisJobs
     interval: 5
     timeout: 5
@@ -23,16 +24,72 @@ queriers:
       metricSpec:
         pending_events:
           webhook_queue_database_queues:default:
-          webhook_queue_database_queues:high:
-          webhook_queue_database_queues:low:
+          horizon_queue_database_queues:webhook:inbound:
+          horizon_queue_database_queues:webhook:outbound:
       redis:
-        url: ${ENV:REDIS_WEBHOOK_URL}
-        password: ${ENV:REDIS_WEBHOOK_PASSWORD}
+        url: ${ENV:REDIS_FORALL_URL}
+        password: ${ENV:REDIS_FORALL_PASSWORD}
+
+  - name: ApiRedisJobs
+    interval: 5
+    timeout: 5
+    client:
+      type: redis
+      queryType: ListCount
+      metricSpec:
+        pending_events:
+          horizon_queue_database_queues:api:
+      redis:
+        url: ${ENV:REDIS_FORALL_URL}
+        password: ${ENV:REDIS_FORALL_PASSWORD}
 
 metrics:
-  storage: prometheus
+  - storage: prometheus
+
+  # waba high
+  - storage: AzureMonitor
+    name: azure_monitor_waba_high
+    azuremonitor:
+      tenantId: ${ENV:AZURE_TENANT_ID_WABA_HIGH}
+      clientId: ${ENV:AZURE_CLIENTstorage_ID_WABA_HIGH}
+      clientSecret: ${ENV:AZURE_CLIENT_SECRET_WABA_HIGH}
+      resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_WABA_HIGH}
+      sendInterval: 1m
+      capturedEvents:
+        - whatsapp_business_platform_database_queues:high
+
+  # waba default
+  - storage: AzureMonitor
+    name: azure_monitor_waba_default
+    azuremonitor:
+      tenantId: ${ENV:AZURE_TENANT_ID_WABA_DEFAULT}
+      clientId: ${ENV:AZURE_CLIENT_ID_WABA_DEFAULT}
+      clientSecret: ${ENV:AZURE_CLIENT_SECRET_WABA_DEFAULT}
+      resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_WABA_DEFAULT}
+      sendInterval: 1m
+      capturedEvents:
+        - whatsapp_business_platform_database_queues:default
+        - whatsapp_business_platform_database_queues:low
+
+  # pengantri
+  - storage: AzureMonitor
+    name: azure_monitor_pengantri
+    azuremonitor:
+      tenantId: ${ENV:AZURE_TENANT_ID_PENGANTRI}
+      clientId: ${ENV:AZURE_CLIENT_ID_PENGANTRI}
+      clientSecret: ${ENV:AZURE_CLIENT_SECRET_PENGANTRI}
+      resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_PENGANTRI}
+      sendInterval: 1m
+      capturedEvents:
+        - horizon_queue_database_queues:api:default
+        - horizon_queue_database_queues:api:high
+        - horizon_queue_database_queues:api:low
+        - horizon_queue_database_queues:webhook:default
+        - horizon_queue_database_queues:webhook:high
+        - horizon_queue_database_queues:webhook:low
 
 web:
   port: 8451
+  renderMetricsFromStorage: prometheus
 
 logLevel: info

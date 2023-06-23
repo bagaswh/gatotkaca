@@ -9,12 +9,14 @@ export interface Metric {
 }
 
 export abstract class MetricsStorage {
-  abstract insert(metric: Metric): void;
+  abstract insert(metric: Metric): Promise<any>;
   abstract render(): Promise<string>;
 }
 
 class NothingStorage implements MetricsStorage {
-  insert(metric: Metric) {}
+  insert(metric: Metric) {
+    return Promise.resolve('');
+  }
 
   render() {
     return Promise.resolve('');

@@ -68,7 +68,7 @@ stages:
 
           - task: AzureCLI@2
             inputs:
-              azureSubscription: 'sp-deployer-recipes'
+              azureSubscription: $(AZURE_SUBSCRIPTION)
               scriptType: 'bash'
               scriptLocation: 'inlineScript'
               inlineScript: |

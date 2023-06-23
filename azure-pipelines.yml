@@ -20,7 +20,7 @@ stages:
               dockerfile: .
               containerRegistry: $(DOCKER_CONTAINER_REGISTRY)
               tags: |
-                $(Build.SourceBranch)
+                $(Build.SourceBranchName)
                 latest
 
       - job: Build

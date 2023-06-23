@@ -1,22 +1,100 @@
-# Docker
-# Build and push an image to Azure Container Registry
-# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
-
 trigger:
-- main
+  branches:
+    include:
+      - 'release-*'
 
-resources:
-- repo: self
+pool:
+  name: Default
 
-steps:
-  - task: ArchiveFiles@2
-    displayName: "Archive files"
-    inputs:
-      rootFolderOrFile: "$(System.DefaultWorkingDirectory)"
-      includeRootFolder: false
-      archiveType: zip
-      archiveFile: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-      replaceExistingArchive: true
+stages:
+  - stage: Build
+    condition: startsWith(variables['Build.SourceBranch'], 'refs/heads/release-')
+    jobs:
+      - job: DockerBuild
+        steps:
+          - task: Docker@2
+            displayName: Build and push an image to container registry
+            inputs:
+              command: buildAndPush
+              repository: $(DOCKER_IMAGE_REPOSITORY)
+              dockerfile: .
+              containerRegistry: $(DOCKER_CONTAINER_REGISTRY)
+              tags: |
+                $(Build.SourceBranch)
+                latest
 
-  - upload: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip
-    artifact: drop
+      - job: Build
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '18.x'
+            displayName: 'Install Node.js'
+
+          - script: |
+              rm -rf .git
+            displayName: Directory cleanup
+
+          - script: |
+              npm install
+              npm run build
+              rm -rf node_modules
+              npm install --omit=dev
+            displayName: npm install, build
+
+          - script: |
+              mkdir root
+              cp -t root -r .dockerignore docker-compose.yml Dockerfile package.json package-lock.json dist node_modules
+            displayName: Prepare root dir
+
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/root'
+              includeRootFolder: false
+              archiveType: 'zip'
+              archiveFile: '$(System.DefaultWorkingDirectory)/$(Build.BuildId).zip'
+              replaceExistingArchive: true
+
+          - publish: $(System.DefaultWorkingDirectory)/$(Build.BuildId).zip
+            artifact: artifact
+
+  - stage: Release
+    jobs:
+      - job: AzureStorageArtifact
+        steps:
+          - download: current
+            artifact: artifact
+
+          - script: tree
+
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'sp-deployer-recipes'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -e
+
+                rg=$(ACCOUNT_RESOURCE_GROUP)
+                account_name=$(ACCOUNT_NAME)
+                container=$(ACCOUNT_CONTAINER)
+
+                # account_key=$(ACCOUNT_KEY)
+                version=$(Build.SourceBranchName)
+
+                az config set extension.use_dynamic_install=yes_without_prompt
+
+                echo 'Uploading...'
+                az storage blob upload -c \
+                  $container \
+                  --file "$(System.DefaultWorkingDirectory)/$(Build.BuildId).zip" \
+                  -n "$version/installer.zip" \
+                  --account-name $account_name \
+                  --auth-mode login
+
+                az storage blob upload -c \
+                  $container \
+                  --file "$(System.DefaultWorkingDirectory)/$(Build.BuildId).zip" \
+                  -n "latest/installer.zip" \
+                  --account-name $account_name \
+                  --overwrite \
+                  --auth-mode login

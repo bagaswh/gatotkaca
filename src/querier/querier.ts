@@ -8,6 +8,7 @@ import { Logger } from 'winston';
 import { QuerierClient } from './client/client';
 import { QuerierClientFactory } from './client/factory';
 import { ClientError } from './client/error';
+import metricsStorageManager from '../metrics/manager';
 
 export class QuerierError extends GatotError {}
 
@@ -21,10 +22,7 @@ export default class Querier {
     };
   };
 
-  constructor(
-    private readonly config: Config,
-    private readonly metricsStorage: MetricsStorage
-  ) {
+  constructor(private readonly config: Config) {
     this.scheduler = Scheduler.getInstance();
     this.idMaps = {};
     this.logger = createLogger('querier');
@@ -81,16 +79,20 @@ export default class Querier {
     metricName: string,
     queryKey: string
   ) {
-    const result = await client.query(queryKey);
-    this.metricsStorage.insert({
-      name: metricName,
-      value: Number(result.value),
-      timestamp: Date.now(),
-      labels: {
-        name: queryName,
-        key: queryKey,
-      },
-    });
+    try {
+      const result = await client.query(queryKey);
+      return metricsStorageManager.insertToAll({
+        name: metricName,
+        value: Number(result.value),
+        timestamp: Date.now(),
+        labels: {
+          name: queryName,
+          key: queryKey,
+        },
+      });
+    } catch (err: any) {
+      this.logger.error(`Query ${queryName} failed with error: ${err.message}`);
+    }
   }
 
   async query(id: string) {
@@ -121,9 +123,13 @@ export default class Querier {
       }
       await Promise.all(tasks);
       tasks = [];
-      this.logger.debug(`Queried all metricSpec for ${querier.config.name}`);
+      this.logger.debug(
+        `Queried and published all metricSpec for ${querier.config.name}`
+      );
     } catch (err: any) {
-      this.logger.error(`Query failed with error: ${err.message}`);
+      this.logger.error(
+        `Failed inserting metricSpec with error: ${err.message}`
+      );
     }
   }
 }

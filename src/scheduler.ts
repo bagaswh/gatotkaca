@@ -1,4 +1,5 @@
 import { Logger } from 'winston';
+import app from './app';
 import { createLogger } from './logger';
 
 export class Scheduler {
@@ -14,7 +15,7 @@ export class Scheduler {
 
   private constructor() {
     this.intervalIds = {};
-    this.logger = createLogger('scheduler');
+    this.logger = createLogger('scheduler', app.config().logLevel);
   }
 
   static getInstance() {

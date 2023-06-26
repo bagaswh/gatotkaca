@@ -3,6 +3,7 @@ import { GatotError } from './error';
 import yaml, { YAMLException } from 'js-yaml';
 import * as Z from 'zod';
 import { isObject } from './utils/object';
+import ms from 'ms';
 
 const WebConfigSchema = Z.object({
   port: Z.number().optional().default(8451),
@@ -59,12 +60,44 @@ const QuerierConfigSchema = Z.object({
   });
 export type QuerierConfig = Z.infer<typeof QuerierConfigSchema>;
 
+// ## Metrics
+
+// ### Prometheus
 const PrometheusStorageConfigSchema = Z.object({
   metricPrefix: Z.string().optional().default('gatot_scaler_'),
   collectDefaultMetrics: Z.boolean().optional().default(false),
 });
 export type PrometheusStorageConfig = Z.infer<
   typeof PrometheusStorageConfigSchema
+>;
+
+// ### Azure Monitor
+const AzureMonitorStorageConfigSchema = Z.object({
+  tenantId: Z.string(),
+  clientId: Z.string(),
+  clientSecret: Z.string(),
+  resourceId: Z.string(),
+  region: Z.string(),
+  sendInterval: Z.string(),
+  capturedEvents: Z.array(Z.string()),
+  namespace: Z.string().default('GatotkacaQueue'),
+}).superRefine((input, ctx) => {
+  const intervalMs = ms(input.sendInterval);
+  if (intervalMs === undefined) {
+    ctx.addIssue({
+      code: Z.ZodIssueCode.custom,
+      message: `Cannot parse \`sendInterval\` value of \`${input.sendInterval}\``,
+    });
+  }
+  if (intervalMs < 60000) {
+    ctx.addIssue({
+      code: Z.ZodIssueCode.custom,
+      message: `\`sendInterval\` cannot be less than 60s (1m)`,
+    });
+  }
+});
+export type AzureMonitorStorageConfig = Z.infer<
+  typeof AzureMonitorStorageConfigSchema
 >;
 
 const MetricsStorageTypeConfigSchema = Z.enum(['prometheus', 'AzureMonitor']);
@@ -78,7 +111,7 @@ const MetricsStorageConfigSchema = Z.object({
   prometheus: PrometheusStorageConfigSchema.optional().default({
     metricPrefix: 'gatot_scaler_',
   }),
-  azuremonitor: Z.optional(Z.any()),
+  azuremonitor: Z.optional(AzureMonitorStorageConfigSchema),
 }).superRefine((input, ctx) => {
   const createMessage = (storage: string, expectedKey: string) =>
     `Provided storage is '${storage}' but the key '${expectedKey}' is not provided`;

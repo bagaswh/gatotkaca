@@ -11,8 +11,8 @@ dotenv.config();
 program.parse();
 
 async function main() {
-  const logger = createLogger('main');
   let config = app.config();
+  const logger = createLogger('main', config.logLevel);
 
   logger.info('Starting querier');
   const querier = new Querier(config);

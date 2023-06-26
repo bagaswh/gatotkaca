@@ -1,4 +1,5 @@
-import { MetricsStorageConfig } from '../config';
+import { AzureMonitorMetricsStorage } from './azure-monitor';
+import { AzureMonitorStorageConfig, MetricsStorageConfig } from '../config';
 import { PrometheusStorage } from './prometheus';
 
 export interface Metric {
@@ -28,6 +29,10 @@ export class MetricsStorageFactory {
     switch (cfg.storage) {
       case 'prometheus':
         return new PrometheusStorage(cfg.prometheus);
+      case 'AzureMonitor':
+        return new AzureMonitorMetricsStorage(
+          cfg.azuremonitor as AzureMonitorStorageConfig
+        );
       default:
         return new NothingStorage();
     }

@@ -23,7 +23,6 @@ queriers:
       queryType: ListCount
       metricSpec:
         pending_events:
-          webhook_queue_database_queues:default:
           horizon_queue_database_queues:webhook:inbound:
           horizon_queue_database_queues:webhook:outbound:
       redis:
@@ -51,10 +50,11 @@ metrics:
     name: azure_monitor_waba_high
     azuremonitor:
       tenantId: ${ENV:AZURE_TENANT_ID_WABA_HIGH}
-      clientId: ${ENV:AZURE_CLIENTstorage_ID_WABA_HIGH}
+      clientId: ${ENV:AZURE_CLIENT_ID_WABA_HIGH}
       clientSecret: ${ENV:AZURE_CLIENT_SECRET_WABA_HIGH}
       resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_WABA_HIGH}
       sendInterval: 1m
+      region: southeastasia
       capturedEvents:
         - whatsapp_business_platform_database_queues:high
 
@@ -67,9 +67,11 @@ metrics:
       clientSecret: ${ENV:AZURE_CLIENT_SECRET_WABA_DEFAULT}
       resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_WABA_DEFAULT}
       sendInterval: 1m
+      region: southeastasia
       capturedEvents:
         - whatsapp_business_platform_database_queues:default
         - whatsapp_business_platform_database_queues:low
+        - whatsapp_business_platform_database_queues:broadcast
 
   # pengantri
   - storage: AzureMonitor
@@ -80,13 +82,11 @@ metrics:
       clientSecret: ${ENV:AZURE_CLIENT_SECRET_PENGANTRI}
       resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_PENGANTRI}
       sendInterval: 1m
+      region: southeastasia
       capturedEvents:
-        - horizon_queue_database_queues:api:default
-        - horizon_queue_database_queues:api:high
-        - horizon_queue_database_queues:api:low
-        - horizon_queue_database_queues:webhook:default
-        - horizon_queue_database_queues:webhook:high
-        - horizon_queue_database_queues:webhook:low
+        - horizon_queue_database_queues:api
+        - horizon_queue_database_queues:webhook:inbound
+        - horizon_queue_database_queues:webhook:outbound
 
 web:
   port: 8451

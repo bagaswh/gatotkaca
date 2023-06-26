@@ -5,11 +5,12 @@ import {
   RedisModules,
   RedisScripts,
 } from 'redis';
+import app from '../../app';
 import { createLogger } from '../../logger';
 import { QuerierClient, QueryResult } from './client';
 import { ClientInitError, ClientQueryError } from './error';
 
-const logger = createLogger('redis-querier-client');
+const logger = createLogger('redis-querier-client', app.config().logLevel);
 
 /**
  * Redis querier can be configured to query the number of items in a list or

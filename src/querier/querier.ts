@@ -9,6 +9,7 @@ import { QuerierClient } from './client/client';
 import { QuerierClientFactory } from './client/factory';
 import { ClientError } from './client/error';
 import metricsStorageManager from '../metrics/manager';
+import app from '../app';
 
 export class QuerierError extends GatotError {}
 
@@ -25,7 +26,7 @@ export default class Querier {
   constructor(private readonly config: Config) {
     this.scheduler = Scheduler.getInstance();
     this.idMaps = {};
-    this.logger = createLogger('querier');
+    this.logger = createLogger('querier', app.config().logLevel);
   }
 
   private createClient(cfg: QuerierClientConfig) {
@@ -128,7 +129,7 @@ export default class Querier {
       );
     } catch (err: any) {
       this.logger.error(
-        `Failed inserting metricSpec with error: ${err.message}`
+        `Failed inserting metricSpec ${querier.config.name} with error: ${err.message}`
       );
     }
   }

@@ -4,4 +4,4 @@ export class GatotError extends Error {
   }
 }
 
-export class ValueError extends Error {}
+export class NotImplementedError extends GatotError {}

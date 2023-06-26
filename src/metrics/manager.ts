@@ -49,11 +49,27 @@ export class MetricsStorageManager {
     return this.storages.get(name);
   }
 
+  private async runBatchedTasks(tasks: Promise<any>[]) {
+    const result = await Promise.allSettled(tasks);
+    for (const item of result) {
+      if (item.status == 'rejected') {
+        this.logger.error(`Failed inserting to storage: ${item.reason}`);
+      }
+    }
+  }
+
   public async insertToAll(metric: Metric) {
+    let tasks = [];
     for (const [key, storageDef] of this.storages.entries()) {
       const storage = storageDef.storage;
-      await storage.insert(metric);
+      tasks.push(storage.insert(metric));
+      if (tasks.length >= 10) {
+        await this.runBatchedTasks(tasks);
+        tasks = [];
+      }
     }
+    await this.runBatchedTasks(tasks);
+    tasks = [];
   }
 }
 

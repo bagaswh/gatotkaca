@@ -57,18 +57,6 @@ metrics:
       region: southeastasia
       capturedEvents:
         - whatsapp_business_platform_database_queues:high
-
-  # waba default
-  - storage: AzureMonitor
-    name: azure_monitor_waba_default
-    azuremonitor:
-      tenantId: ${ENV:AZURE_TENANT_ID_WABA_DEFAULT}
-      clientId: ${ENV:AZURE_CLIENT_ID_WABA_DEFAULT}
-      clientSecret: ${ENV:AZURE_CLIENT_SECRET_WABA_DEFAULT}
-      resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID_WABA_DEFAULT}
-      sendInterval: 1m
-      region: southeastasia
-      capturedEvents:
         - whatsapp_business_platform_database_queues:default
         - whatsapp_business_platform_database_queues:low
         - whatsapp_business_platform_database_queues:broadcast

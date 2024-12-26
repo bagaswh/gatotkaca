@@ -1,0 +1,40 @@
+queriers:
+  - name: RedisJobs
+    interval: 5
+    timeout: 5
+    client:
+      type: redis
+      queryType: ListCount
+      metricSpec:
+        pending_events:
+          queue_1:default:
+          queue_1:high:
+          queue_1:low:
+          queue_1:broadcast:
+      redis:
+        url: ${ENV:REDIS_URL}
+        password: ${ENV:REDIS_PASSWORD}
+
+metrics:
+  - storage: prometheus
+
+  - storage: AzureMonitor
+    name: azure_monitor
+    azuremonitor:
+      tenantId: ${ENV:AZURE_TENANT_ID}
+      clientId: ${ENV:AZURE_CLIENT_ID}
+      clientSecret: ${ENV:AZURE_CLIENT_SECRET}
+      resourceId: ${ENV:AZURE_MONITOR_RESOURCE_ID}
+      sendInterval: 1m
+      region: southeastasia
+      capturedEvents:
+        - queue_1:high
+        - queue_1:default
+        - queue_1:low
+        - queue_1:broadcast
+
+web:
+  port: 8451
+  renderMetricsFromStorage: prometheus
+
+logLevel: info

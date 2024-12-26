@@ -1,0 +1,16 @@
+version: "3"
+
+services:
+  gatotkaca:
+    image: gatotkaca
+    restart: unless-stopped
+    build: .
+    volumes:
+      - ./examples/etc/app/config.yml:/etc/gatotkaca/config.yml
+    init: true
+    command: >
+      --config.file /etc/gatotkaca/config.yml
+    ports:
+      - "8451:8451"
+    env_file:
+      - .env

@@ -1,3 +1,3 @@
-# Event Processor Autoscaler
+# Gatotkaca
 
-Autoscale event processor based on metrics such as pending events count.
+Export queue length from Redis to Azure Monitor and Prometheus.
